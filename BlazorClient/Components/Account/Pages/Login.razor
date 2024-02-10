@@ -1,0 +1,64 @@
+﻿@page "/Account/Login"
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+
+@inject NavigationManager NavigationManager
+
+<PageTitle>Log In</PageTitle>
+
+<h1>Log in</h1>
+
+<EditForm Model="Input" OnValidSubmit="LoginUser" method="post" FormName="login">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <label for="email">Email:</label>
+    <InputText @bind-Value="Input.Email" placeholder="name@domain.com" id="email"/>
+    <ValidationMessage For="() => Input.Email"/>
+    <label for="password">Password:</label>
+    <InputText type="password" @bind-Value="Input.Password" placeholder="password" id="password"/>
+    <button type="submit">Log in</button>
+</EditForm>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = new();
+
+    private sealed class InputModel
+    {
+        [Required] [EmailAddress] public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private async Task LoginUser()
+    {
+        if (Input is { Email: "bas.martens.1988@outlook.com", Password: "secret" })
+        {
+            Claim[] claims =
+            [
+                new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Email, Input.Email)
+            ];
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            RedirectTo(ReturnUrl);
+        }
+    }
+
+    private void RedirectTo(string? uri)
+    {
+        uri ??= "";
+        if (!Uri.IsWellFormedUriString(uri, UriKind.Relative))
+            uri = NavigationManager.ToBaseRelativePath(uri);
+        NavigationManager.NavigateTo(uri);
+    }
+
+}
